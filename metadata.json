@@ -1,6 +1,0 @@
-{
-  "name": "Tauri Piped Desktop",
-  "description": "Легковесный десктопный клиент для YouTube на базе Tauri 2.0 и Piped с горячими клавишами, управлением мышью и модульной архитектурой плагинов.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}
