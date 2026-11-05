@@ -1,0 +1,86 @@
+name: 'Release Tauri 2.0 Desktop EXE'
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Имя тега / версии (например, v0.2.0)'
+        required: false
+        default: 'v0.2.0'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    name: 'Сборка Windows .exe (Tauri v2)'
+    runs-on: windows-latest
+
+    steps:
+      - name: 📥 Клонирование репозитория
+        uses: actions/checkout@v4
+
+      - name: 🟢 Установка Node.js (v20)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: 🦀 Установка стабильного тулчейна Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: ⚡ Кэширование Rust зависимостей
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: 📦 Установка зависимостей проекта (npm)
+        run: npm install
+
+      - name: 🔨 Сборка нативного Windows .exe (Tauri 2.0 CLI)
+        run: npm run tauri build
+
+      - name: 🚀 Публикация релиза в GitHub Releases
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref_name || inputs.tag_name }}
+          name: 'YouTube Desktop ${{ github.ref_name || inputs.tag_name }}'
+          body: |
+            ## 🚀 YouTube Desktop (Tauri 2.0 + Piped Frontend)
+
+            Легковесный десктопный клиент для YouTube на базе **Tauri v2** (Rust + Native WebView2) и Piped.
+
+            ### ✨ Особенности:
+            - Потребление памяти: всего **~35-50 МБ ОЗУ** (вместо ~400 МБ в Chromium/Electron).
+            - Горячие клавиши (Space, J, K, L, F, M, 0-9) и колесико мыши для управления громкостью.
+            - Модульная архитектура плагинов в папке `plugins/` (SponsorBlock, Return YouTube Dislike, OLED Theme).
+            - Кнопка быстрого доступа в проводник Windows к папке плагинов.
+
+            ### 📦 Файлы для скачивания:
+            - **`.exe` (NSIS Installer)** — стандартный установщик с созданием ярлыков.
+            - **`.msi`** — корпоративный установщик Windows Installer.
+            - **`yt-desktop.exe`** — портативная версия без установки.
+          draft: false
+          prerelease: false
+          files: |
+            src-tauri/target/release/bundle/nsis/*.exe
+            src-tauri/target/release/bundle/msi/*.msi
+            src-tauri/target/release/yt-desktop.exe
+
+      - name: 📤 Сохранение артефактов сборки в Actions Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-binaries
+          path: |
+            src-tauri/target/release/bundle/nsis/*.exe
+            src-tauri/target/release/bundle/msi/*.msi
+            src-tauri/target/release/yt-desktop.exe
+          if-no-files-found: warn
